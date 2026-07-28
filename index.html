@@ -1,468 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Krixel Tests — Practice Mock Exams</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+// /api/chat.js
+// Vercel serverless function — keeps the Gemini API key on the server.
+// Reads the key from the Vercel Environment Variable "GEMINI_API_KEY".
+// Never expose this key in front-end code.
 
-:root{
-  --ink:#16213e;
-  --ink-soft:#5b6478;
-  --ink-faint:#8a91a6;
-  --paper:#faf6ec;
-  --panel:#ffffff;
-  --rule:#ddd4bd;
-  --rule-soft:#eae3d2;
-  --green:#2f6e51;
-  --green-bg:#e6f0ea;
-  --red:#a8402f;
-  --red-bg:#f7e9e6;
-  --amber:#b9822c;
-  --amber-bg:#faf0dd;
-  --shadow: 0 1px 2px rgba(22,33,62,0.06), 0 4px 16px rgba(22,33,62,0.06);
-}
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
-body{
-  background:var(--paper);
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(22,33,62,0.05) 1px, transparent 0);
-  background-size: 22px 22px;
-  color:var(--ink);
-  font-family:'Inter',system-ui,sans-serif;
-  min-height:100vh;
-  -webkit-font-smoothing:antialiased;
-}
-.mono{font-family:'IBM Plex Mono',monospace;}
-.serif{font-family:'Lora',Georgia,serif;}
-a{color:inherit;text-decoration:none;}
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
-/* ---------- HEADER ---------- */
-header{
-  border-bottom:1.5px solid var(--rule);
-  background:var(--panel);
-}
-.header-inner{
-  max-width:1040px; margin:0 auto; padding:18px 24px;
-  display:flex; align-items:center; justify-content:space-between;
-}
-.brand{ display:flex; align-items:center; gap:10px; }
-.brand-mark{
-  width:34px; height:34px; border-radius:8px; background:var(--ink);
-  color:#f2ede0; display:flex; align-items:center; justify-content:center;
-  font-family:'Lora',serif; font-weight:700; font-size:16px; flex-shrink:0;
-}
-.brand-name{ font-family:'Lora',serif; font-weight:700; font-size:19px; letter-spacing:-.01em; }
-.brand-name small{ display:block; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint); margin-top:1px;}
-.header-note{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); letter-spacing:.04em; }
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: "Server is missing GEMINI_API_KEY" });
+  }
 
-/* ---------- HERO ---------- */
-.hero{ max-width:1040px; margin:0 auto; padding:56px 24px 20px; }
-.eyebrow{
-  display:inline-flex; align-items:center; gap:8px;
-  border:1.5px solid var(--amber); color:var(--amber);
-  padding:4px 12px; border-radius:2px; font-size:11px; letter-spacing:.14em;
-  text-transform:uppercase; font-weight:600; font-family:'IBM Plex Mono',monospace;
-  transform:rotate(-1deg);
-}
-.hero h1{
-  font-family:'Lora',serif; font-weight:700; font-size:42px; line-height:1.12;
-  margin:20px 0 12px; letter-spacing:-.01em; max-width:640px;
-}
-.hero p{ color:var(--ink-soft); font-size:15.5px; line-height:1.6; max-width:560px; margin:0; }
+  const { contents } = req.body || {};
+  if (!Array.isArray(contents)) {
+    return res.status(400).json({ error: "Request body must include a 'contents' array" });
+  }
 
-/* ---------- CARDS SECTION ---------- */
-.section{ max-width:1040px; margin:0 auto; padding:40px 24px 90px; }
-.section-head{
-  display:flex; align-items:baseline; justify-content:space-between;
-  border-bottom:1px dashed var(--rule); padding-bottom:10px; margin-bottom:26px;
-}
-.section-head h2{ font-family:'Lora',serif; font-size:20px; font-weight:600; margin:0; }
-.section-head .cnt{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); }
-
-.card-grid{ display:grid; grid-template-columns:1fr 1fr; gap:22px; }
-@media (max-width: 760px){ .card-grid{ grid-template-columns:1fr; } }
-
-.test-card{
-  background:var(--panel); border:1.5px solid var(--ink); border-radius:14px;
-  box-shadow:var(--shadow); display:flex; flex-direction:column; overflow:hidden;
-  transition:transform .15s ease, box-shadow .15s ease;
-}
-.test-card:hover{ transform:translateY(-3px); box-shadow:0 10px 30px rgba(22,33,62,.14); }
-.tc-head{
-  background:var(--ink); color:#f2ede0; padding:20px 22px;
-  display:flex; justify-content:space-between; align-items:flex-start; gap:14px;
-}
-.tc-head .eyebrow-sm{
-  font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.13em;
-  text-transform:uppercase; color:#c9b98a; margin-bottom:6px;
-}
-.tc-head h3{ font-family:'Lora',serif; font-weight:600; font-size:19px; margin:0; line-height:1.3; }
-.tc-stamp{
-  border:1.5px solid #c9b98a; color:#c9b98a; font-family:'IBM Plex Mono',monospace;
-  font-size:10px; letter-spacing:.07em; text-transform:uppercase; padding:6px 9px;
-  border-radius:4px; white-space:nowrap; transform:rotate(2deg); flex-shrink:0;
-}
-.tc-body{ padding:18px 22px 6px; flex:1; }
-.tc-row{
-  display:grid; grid-template-columns:96px 1fr; gap:6px 14px; padding:8px 0;
-  border-bottom:1px dotted var(--rule-soft); font-size:13.5px;
-}
-.tc-row:last-child{ border-bottom:none; }
-.tc-row .k{ color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; padding-top:1px; }
-.tc-row .v{ color:var(--ink); line-height:1.45; }
-.tc-tags{ display:flex; flex-wrap:wrap; gap:6px; padding:14px 22px 4px; }
-.tag{
-  background:var(--amber-bg); color:#6b4e18; border:1px solid #e4cd9a;
-  font-family:'IBM Plex Mono',monospace; font-size:10.5px; padding:4px 9px;
-  border-radius:20px; letter-spacing:.02em;
-}
-.tc-foot{ padding:16px 22px 22px; }
-.tc-btn{
-  display:flex; align-items:center; justify-content:center; gap:8px;
-  width:100%; background:var(--ink); color:#f2ede0; border:none;
-  padding:13px; border-radius:9px; font-size:14.5px; font-weight:600;
-  letter-spacing:.01em; transition:background .15s;
-}
-.tc-btn:hover{ background:#22315c; }
-
-/* ---------- ADD-TEST CARD (empty slot) ---------- */
-.add-card{
-  border:1.5px dashed var(--rule); border-radius:14px; background:transparent;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:10px; min-height:290px; color:var(--ink-faint); text-align:center; padding:24px;
-}
-.add-card .plus{
-  width:44px; height:44px; border-radius:50%; border:1.5px dashed var(--rule);
-  display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--ink-faint);
-}
-.add-card .t{ font-family:'Lora',serif; font-size:15.5px; font-weight:600; color:var(--ink-soft); }
-.add-card .s{ font-size:12.5px; max-width:230px; line-height:1.5; }
-
-/* ---------- DEVELOPER SECTION ---------- */
-.dev-section{ max-width:1040px; margin:0 auto; padding:0 24px 60px; }
-.dev-card{
-  background:var(--panel); border:1.5px solid var(--rule); border-radius:14px;
-  box-shadow:var(--shadow); padding:26px 28px; display:flex; align-items:center; gap:20px;
-}
-.dev-avatar{
-  width:56px; height:56px; border-radius:50%; background:var(--ink); color:#f2ede0;
-  display:flex; align-items:center; justify-content:center; flex-shrink:0;
-  font-family:'Lora',serif; font-weight:700; font-size:19px; letter-spacing:.02em;
-}
-.dev-info .eyebrow-sm{
-  font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.13em;
-  text-transform:uppercase; color:var(--amber); margin-bottom:5px; font-weight:600;
-}
-.dev-info h3{ font-family:'Lora',serif; font-weight:700; font-size:18px; margin:0 0 6px; }
-.dev-info p{ font-size:13.5px; color:var(--ink-soft); line-height:1.55; margin:0; max-width:520px; }
-
-footer{
-  border-top:1.5px solid var(--rule); padding:22px 24px; text-align:center;
-  font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); letter-spacing:.03em;
-}
-
-/* ---------- HAMBURGER MENU ---------- */
-.hamburger{
-  width:38px; height:38px; border-radius:8px; border:1.5px solid var(--ink);
-  background:var(--panel); display:flex; flex-direction:column; align-items:center;
-  justify-content:center; gap:5px; cursor:pointer; flex-shrink:0; transition:background .15s;
-}
-.hamburger:hover{ background:var(--rule-soft); }
-.hamburger span{ width:18px; height:2px; background:var(--ink); border-radius:2px; display:block; }
-
-.nav-overlay{
-  position:fixed; inset:0; background:rgba(22,33,62,0.35);
-  opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:40;
-}
-.nav-overlay.open{ opacity:1; pointer-events:auto; }
-
-.nav-drawer{
-  position:fixed; top:0; right:0; height:100%; width:300px; max-width:85vw;
-  background:var(--panel); border-left:1.5px solid var(--ink); box-shadow:-8px 0 30px rgba(22,33,62,.18);
-  transform:translateX(100%); transition:transform .25s ease; z-index:41;
-  display:flex; flex-direction:column; padding:22px 22px 30px;
-}
-.nav-drawer.open{ transform:translateX(0); }
-.nav-drawer-head{
-  display:flex; align-items:center; justify-content:space-between;
-  border-bottom:1px dashed var(--rule); padding-bottom:14px; margin-bottom:8px;
-}
-.nav-drawer-head h4{ font-family:'Lora',serif; font-size:16px; margin:0; font-weight:700; }
-.nav-close{
-  width:30px; height:30px; border-radius:50%; border:1.5px solid var(--rule);
-  background:transparent; display:flex; align-items:center; justify-content:center;
-  cursor:pointer; font-size:15px; color:var(--ink-faint); line-height:1;
-}
-.nav-close:hover{ background:var(--rule-soft); }
-.nav-group-label{
-  font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.13em;
-  text-transform:uppercase; color:var(--amber); font-weight:600; margin:14px 0 8px;
-}
-.nav-link{
-  display:flex; flex-direction:column; gap:2px; padding:11px 10px; border-radius:8px;
-  border:1px solid transparent; margin-bottom:4px; transition:background .12s,border-color .12s;
-}
-.nav-link:hover{ background:var(--rule-soft); border-color:var(--rule); }
-.nav-link .nl-title{ font-family:'Lora',serif; font-weight:600; font-size:14.5px; color:var(--ink); }
-.nav-link .nl-sub{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-faint); }
-
-/* ---------- PROMO / ADVERTISING BANNER ---------- */
-.promo-banner{
-  max-width:1040px; margin:22px auto 0; padding:0 24px;
-}
-.promo-inner{
-  background:var(--ink); color:#f2ede0; border-radius:12px;
-  padding:16px 22px; display:flex; align-items:center; justify-content:space-between;
-  gap:16px; flex-wrap:wrap; box-shadow:var(--shadow);
-}
-.promo-text{ font-size:13.5px; line-height:1.5; max-width:640px; }
-.promo-text strong{ color:#f2ede0; }
-.promo-text span.hl{ color:#c9b98a; }
-.promo-cta{
-  display:inline-flex; align-items:center; gap:8px; background:#c9b98a; color:#16213e;
-  font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12.5px;
-  padding:9px 16px; border-radius:8px; white-space:nowrap; letter-spacing:.02em;
-  transition:background .15s;
-}
-.promo-cta:hover{ background:#e0d1a3; }
-
-/* ---------- AI CHATBOT WIDGET ---------- */
-.ai-fab{
-  position:fixed; bottom:24px; right:24px; z-index:50;
-  width:58px; height:58px; border-radius:50%; background:var(--ink); color:#f2ede0;
-  border:1.5px solid var(--ink); display:flex; align-items:center; justify-content:center;
-  font-size:24px; cursor:pointer; box-shadow:0 6px 20px rgba(22,33,62,.28);
-  transition:transform .15s ease, background .15s ease;
-}
-.ai-fab:hover{ transform:translateY(-2px) scale(1.04); background:#22315c; }
-
-.ai-panel{
-  position:fixed; bottom:96px; right:24px; z-index:51;
-  width:360px; max-width:90vw; height:480px; max-height:70vh;
-  background:var(--panel); border:1.5px solid var(--ink); border-radius:14px;
-  box-shadow:0 12px 40px rgba(22,33,62,.25); display:flex; flex-direction:column;
-  overflow:hidden; opacity:0; transform:translateY(12px) scale(.97); pointer-events:none;
-  transition:opacity .18s ease, transform .18s ease;
-}
-.ai-panel.open{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
-
-.ai-panel-head{
-  background:var(--ink); color:#f2ede0; padding:14px 18px; display:flex; align-items:center;
-  justify-content:space-between; flex-shrink:0;
-}
-.ai-panel-head .aph-title{ font-family:'Lora',serif; font-weight:700; font-size:15px; }
-.ai-panel-head .aph-sub{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:#c9b98a; margin-top:2px; }
-.ai-close{
-  width:26px; height:26px; border-radius:50%; border:1px solid rgba(242,237,224,.4);
-  background:transparent; color:#f2ede0; display:flex; align-items:center; justify-content:center;
-  cursor:pointer; font-size:13px; flex-shrink:0;
-}
-.ai-close:hover{ background:rgba(242,237,224,.15); }
-
-.ai-messages{
-  flex:1; overflow-y:auto; padding:16px 16px 8px; display:flex; flex-direction:column; gap:12px;
-  background:var(--paper);
-}
-.ai-msg{ max-width:85%; font-size:13.5px; line-height:1.5; padding:10px 13px; border-radius:12px; }
-.ai-msg.bot{ align-self:flex-start; background:#fff; border:1px solid var(--rule-soft); color:var(--ink); border-bottom-left-radius:4px; }
-.ai-msg.user{ align-self:flex-end; background:var(--ink); color:#f2ede0; border-bottom-right-radius:4px; }
-.ai-msg.typing{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); }
-
-.ai-input-row{
-  display:flex; align-items:flex-end; gap:8px; padding:12px; border-top:1px solid var(--rule-soft);
-  background:var(--panel); flex-shrink:0;
-}
-.ai-input-row textarea{
-  flex:1; resize:none; border:1.5px solid var(--rule); border-radius:9px; padding:9px 11px;
-  font-family:'Inter',sans-serif; font-size:13px; color:var(--ink); max-height:80px; min-height:38px;
-  outline:none; background:var(--paper);
-}
-.ai-input-row textarea:focus{ border-color:var(--ink); }
-.ai-send{
-  width:38px; height:38px; border-radius:9px; border:none; background:var(--ink); color:#f2ede0;
-  display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:15px;
-  transition:background .15s;
-}
-.ai-send:hover{ background:#22315c; }
-.ai-send:disabled{ opacity:.5; cursor:not-allowed; }
-</style>
-</head>
-<body>
-
-<header>
-  <div class="header-inner">
-    <div class="brand">
-      <div class="brand-mark">K</div>
-      <div class="brand-name">Krixel Tests<small>Practice mock exams</small></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:16px;">
-      <button class="hamburger" id="menuBtn" aria-label="Open menu">
-        <span></span><span></span><span></span>
-      </button>
-    </div>
-  </div>
-</header>
-
-<div class="hero">
-  <span class="eyebrow">Free · Timed · Auto-scored</span>
-  <h1>Practice exams that feel like the real thing.</h1>
-
-  <div class="promo-banner" style="margin:18px 0 18px;padding:0;max-width:100%;">
-    <div class="promo-inner">
-      <div class="promo-text">
-        <strong>Krixel Tests</strong> is 100% free — <span class="hl">no sign-up, no paywalls.</span>
-        Know a student prepping for CUET-UG or a general aptitude exam? Share <span class="hl">krixeltest.vercel.app</span> with them.
-      </div>
-      <a class="promo-cta" href="https://krixeltest.vercel.app" target="_blank" rel="noopener">Visit Krixel Tests →</a>
-    </div>
-  </div>
-
-  <p>Full-length, timed mock tests with instant scoring and section-wise breakdowns — no sign-up required. Pick a test below and start whenever you're ready.</p>
-</div>
-
-<div class="section">
-  <div class="section-head">
-    <h2>Available mock tests</h2>
-    <span class="cnt">Showing 5 of 5</span>
-  </div>
-
-  <div class="card-grid">
-  </div>
-</div>
-
-<div class="dev-section">
-  <div class="dev-card">
-    <div class="dev-avatar">DK</div>
-    <div class="dev-info">
-      <div class="eyebrow-sm">Developer</div>
-      <h3>Deepesh Kumar</h3>
-      <p>Building free, exam-ready practice tools so every student gets the prep they deserve — not just the ones who can afford it.</p>
-    </div>
-  </div>
-</div>
-
-<footer>Krixel Tests · practice papers for personal study use, not affiliated with any official exam body</footer>
-
-<button class="ai-fab" id="aiFab" aria-label="Ask AI">💬</button>
-
-<div class="ai-panel" id="aiPanel">
-  <div class="ai-panel-head">
-    <div>
-      <div class="aph-title">Ask Krixel AI</div>
-      <div class="aph-sub">Doubt-solving assistant</div>
-    </div>
-    <button class="ai-close" id="aiClose" aria-label="Close chat">✕</button>
-  </div>
-  <div class="ai-messages" id="aiMessages">
-    <div class="ai-msg bot">Hi! I'm here to help with your CUET-UG / aptitude doubts. Ask me anything — a concept, a question you're stuck on, or exam strategy.</div>
-  </div>
-  <div class="ai-input-row">
-    <textarea id="aiInput" rows="1" placeholder="Type your doubt..."></textarea>
-    <button class="ai-send" id="aiSend" aria-label="Send">➤</button>
-  </div>
-</div>
-
-<div class="nav-overlay" id="navOverlay"></div>
-<nav class="nav-drawer" id="navDrawer">
-  <div class="nav-drawer-head">
-    <h4>Menu</h4>
-    <button class="nav-close" id="navClose" aria-label="Close menu">✕</button>
-  </div>
-
-  <div class="nav-group-label">CET Mock Test</div>
-</nav>
-
-</body>
-<script>
-  fetch('/api/log-visit');
-
-  const menuBtn = document.getElementById('menuBtn');
-  const navClose = document.getElementById('navClose');
-  const navDrawer = document.getElementById('navDrawer');
-  const navOverlay = document.getElementById('navOverlay');
-
-  function openNav(){ navDrawer.classList.add('open'); navOverlay.classList.add('open'); }
-  function closeNav(){ navDrawer.classList.remove('open'); navOverlay.classList.remove('open'); }
-
-  menuBtn.addEventListener('click', openNav);
-  navClose.addEventListener('click', closeNav);
-  navOverlay.addEventListener('click', closeNav);
-
-  /* ---------- AI CHATBOT (Google Gemini API) ---------- */
-  // Replace with your own Google AI Studio API key (aistudio.google.com/apikey)
-  const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY_HERE";
   const GEMINI_MODEL = "gemini-2.0-flash";
-  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GOOGLE_API_KEY}`;
+  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
-  const aiFab = document.getElementById('aiFab');
-  const aiPanel = document.getElementById('aiPanel');
-  const aiClose = document.getElementById('aiClose');
-  const aiMessages = document.getElementById('aiMessages');
-  const aiInput = document.getElementById('aiInput');
-  const aiSend = document.getElementById('aiSend');
+  try {
+    const geminiRes = await fetch(GEMINI_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents,
+        systemInstruction: {
+          parts: [
+            {
+              text: "You are Krixel AI, a friendly doubt-solving assistant for students preparing for CUET-UG and general aptitude exams (English, GK, Mental Ability, Science). Keep answers clear, concise, and exam-focused.",
+            },
+          ],
+        },
+      }),
+    });
 
-  let aiHistory = [];
+    const data = await geminiRes.json();
 
-  function toggleAiPanel(){ aiPanel.classList.toggle('open'); if(aiPanel.classList.contains('open')) aiInput.focus(); }
-  aiFab.addEventListener('click', toggleAiPanel);
-  aiClose.addEventListener('click', () => aiPanel.classList.remove('open'));
-
-  aiInput.addEventListener('input', () => {
-    aiInput.style.height = 'auto';
-    aiInput.style.height = Math.min(aiInput.scrollHeight, 80) + 'px';
-  });
-  aiInput.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendAiMessage(); }
-  });
-  aiSend.addEventListener('click', sendAiMessage);
-
-  function addAiMessage(text, role){
-    const div = document.createElement('div');
-    div.className = 'ai-msg ' + (role === 'user' ? 'user' : 'bot');
-    div.textContent = text;
-    aiMessages.appendChild(div);
-    aiMessages.scrollTop = aiMessages.scrollHeight;
-    return div;
-  }
-
-  async function sendAiMessage(){
-    const text = aiInput.value.trim();
-    if(!text) return;
-    addAiMessage(text, 'user');
-    aiHistory.push({ role: "user", parts: [{ text }] });
-    aiInput.value = '';
-    aiInput.style.height = 'auto';
-    aiSend.disabled = true;
-
-    const typingEl = addAiMessage('Thinking…', 'bot');
-    typingEl.classList.add('typing');
-
-    try {
-      const res = await fetch(GEMINI_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: aiHistory,
-          systemInstruction: {
-            parts: [{ text: "You are Krixel AI, a friendly doubt-solving assistant for students preparing for CUET-UG and general aptitude exams (English, GK, Mental Ability, Science). Keep answers clear, concise, and exam-focused." }]
-          }
-        })
-      });
-      const data = await res.json();
-      const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response. Please try again.";
-      typingEl.remove();
-      addAiMessage(reply, 'bot');
-      aiHistory.push({ role: "model", parts: [{ text: reply }] });
-    } catch (err) {
-      typingEl.remove();
-      addAiMessage("Something went wrong reaching the AI. Please check the connection and try again.", 'bot');
-      console.error("Gemini API error:", err);
-    } finally {
-      aiSend.disabled = false;
+    if (!geminiRes.ok) {
+      return res.status(geminiRes.status).json({ error: data?.error?.message || "Gemini API error" });
     }
+
+    const reply =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Sorry, I couldn't generate a response. Please try again.";
+
+    return res.status(200).json({ reply });
+  } catch (err) {
+    console.error("Gemini proxy error:", err);
+    return res.status(500).json({ error: "Failed to reach Gemini API" });
   }
-</script>
-</html>
+}
